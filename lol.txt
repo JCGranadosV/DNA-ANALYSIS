@@ -1,0 +1,215 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h> // for open
+#include <unistd.h> // for close
+#include<pthread.h>
+#include <assert.h>
+
+
+#define max(x, y) (((x) > (y)) ? (x) : (y))
+#define MAX 100000000
+#define NTHREADS 20
+int counterSeq = 0;
+char completo[MAX];
+char line[MAX];
+
+int resultados[100000000];
+int resultCounter = 0;
+int included[100000000];
+int includedCounter = 0;
+
+struct lineaGenoma{
+  int id; //numero de linea
+  char *linea; //almacena linea completa
+  int caracter; //caracter en el que se encontró, si es -1 no se encontró.
+};
+void encuentraString(char x[MAX], char y[MAX])
+{ 
+  int index;
+  char *e = strstr(x,y);
+  index = (int)(e-x);
+  //sleep(5); para poner pausas entre lecturas de lineas
+  if(strstr(x,y)){
+    printf("\n %s a partir del caracter %d \n", y, index);
+    resultados[resultCounter] = index;
+    resultCounter++;
+    resultados[resultCounter] = strlen(y);
+    resultCounter++;
+  }else printf("\n %s no se encontro\n", y);
+}
+
+void* serverSequence(void* argument) {
+  struct lineaGenoma args;
+  args = *((struct lineaGenoma *) argument);
+
+ // char passed_in_value[NTHREADS];
+ // strcpy(passed_in_value, ((char*) argument));
+  //passed_in_value = *((char*) argument);
+  //printf("Hello World! It's me, thread with argument %s!\n", args.linea);
+  encuentraString(completo,args.linea);
+ 
+  return NULL;
+}
+void* serverReference(void* argument) {
+  int passed_in_value;
+ 
+  passed_in_value = *((int*) argument);
+  printf("Hello World! It's me, thread with argument %d!\n", passed_in_value);
+ 
+  return NULL;
+}
+
+/*
+bool include(int value){
+   for(int i = 0; i < includedCounter; i++){
+           if(included[i] == value){
+                return true;
+           }
+        }   
+  return false;  
+}
+*/
+
+/*
+void encuentraPorcentaje()
+{ 
+for(int i = 0; i < resultCounter/2; i += 2){
+        for(int j = resultados[i]; j < resultados[i+1]; j++){
+                if(!include(j)){
+                     included[includedCounter] = j;
+                     includedCounter++;
+                }
+        }
+}
+}
+*/
+
+void uploadReference()
+{
+  FILE *reference;
+  int opcion=0;
+
+    if ((reference=fopen("ejemploSecuencia.txt","r")) == NULL){
+    printf("Error abriendo archivo .txt !");
+    // Program exits if the file pointer returns NULL.
+    exit(1);
+  }
+	fgets(completo, sizeof(completo),reference);
+  fclose(reference);
+  printf("REFERENCE HAS BEEN UPLOADED\n");
+  printf("REFERENCE IS: %s",completo);
+}
+
+void uploadSequence()
+{
+  FILE *sequence;
+  FILE *reference;
+      if ((reference=fopen("ejemploSecuencia.txt","r")) == NULL){
+    printf("Error con archivo .txt !");
+    // Program exits if the file pointer returns NULL.
+    exit(1);
+  }
+	fgets(completo, sizeof(completo),reference);
+    if ((sequence=fopen("ejemploLineas.seq","r")) == NULL){
+    printf("Error abriendo archivo .seq !");
+
+    // Program exits if the file pointer returns NULL.
+    exit(1);
+  }
+  	while (fgets(line, sizeof(line), sequence)) {
+    line[strlen(line) - 1] = '\0';
+    encuentraString(completo,line);
+		counterSeq ++;
+	}
+
+	printf("Lineas totales: %d \n", counterSeq);
+	fclose(sequence);
+}
+
+int main(int argc, char *argv[]) {
+  ////////////////UPLOAD REFERENCE
+  /*
+  FILE *reference;
+  int opcion=0;
+
+    if ((reference=fopen("ejemploSecuencia.txt","r")) == NULL){
+    printf("Error abriendo archivo .txt !");
+    // Program exits if the file pointer returns NULL.
+    exit(1);
+  }
+	fgets(completo, sizeof(completo),reference);
+  fclose(reference);
+  printf("REFERENCE HAS BEEN UPLOADED\n");
+  printf("REFERENCE IS: %s",completo);
+  */
+  //////////////////////FIN UPLOAD REFERENCE
+  FILE *sequence;
+  if ((sequence=fopen("ejemploLineas.seq","r")) == NULL){
+    printf("Error abriendo archivo .seq !");
+
+    // Program exits if the file pointer returns NULL.
+    exit(1);
+  }
+  //struct lineaGenoma thread_args[5];
+  pthread_t threads[NTHREADS];
+  //////////char *thread_args[NTHREADS];
+  struct lineaGenoma thread_args[1000];
+  int rc;
+  unsigned i;
+  unsigned index;
+  	
+  int opcion=0;
+  while(opcion!=3){
+    
+  
+  printf("\n\n Elija acción a llevar a cabo: \n 1. Upload_Reference || 2. Upload_Sequence\n");
+  scanf("%d",&opcion);
+  if(opcion==1){
+   uploadReference();
+ } else if(opcion ==2){
+   //printf("UPLOAD SEQUENCE");
+   //uploadSequence();
+  index=0;
+  while (fgets(line, sizeof(line), sequence)) {
+    line[strlen(line) - 1] = '\0';
+    //printf("%s", line);
+    //encuentraString(completo,line);
+		//counterSeq ++;
+    //strcpy(thread_args[i], line);
+    ////////thread_args[i]=line;
+    thread_args[index].linea = malloc (sizeof (line));
+    strcpy(thread_args[index].linea,line);
+    //thread_args[index].linea=line;
+    thread_args[ index ].id = index;
+    printf("In main: creating thread %s\n", line);
+    //printf("linea %d\n", i);
+    //rc = pthread_create(&threads[i], NULL, serverSequence, (void *) &thread_args[i]);
+    rc = pthread_create(&threads[index], NULL, serverSequence, &thread_args[index]);
+    assert(!rc);
+    index ++;
+	}
+   // wait for each thread to complete
+  for (index = 0; index < NTHREADS; ++index) {
+    // block until thread 'index' completes
+    rc = pthread_join(threads[index], NULL);
+    assert(!rc);
+    //printf("In main: thread %d has completed\n", index);
+  }
+
+  /*
+  for (index = 0; index < NTHREADS; ++index) {
+    thread_args[ index ] = index;
+    printf("In main: creating thread %d\n", index);
+    rc = pthread_create(&threads[index], NULL, serverSequence, &thread_args[index]);
+    assert(!rc);
+  }
+  */
+  
+ } 
+	
+}
+return 0;
+}
