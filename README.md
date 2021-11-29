@@ -10,6 +10,6 @@ At the end of the iteration, the server calculates the percentage of sequence co
 Finally, it displays the mapped and non-mapped sequences to the user.
 
 Program developed by:
-Juan Camilo Granados
-Alberto Jorge Treviño
+Juan Camilo Granados, 
+Alberto Jorge Treviño, 
 Jorge Abdo
